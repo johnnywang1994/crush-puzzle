@@ -1,5 +1,5 @@
 <template>
-  <div class="jewel-board">
+  <div class="crush-puzzle">
     <div
       v-for="(col, i) in jewelList"
       :key="`jewel_board_${i}`"
@@ -11,21 +11,16 @@
         @click="onJewelClick($event, jewel, i, j)"
         :class="[
           'jewel',
-          {
-            bomb: jewel.tag === 0,
-            col: jewel.tag === 2,
-            row: jewel.tag === 3,
-            same: jewel.tag === 4,
-            picked: pick && (jewel.id === selectJewel[0].jewel.id)
-          },
+          { tag: jewel.tag === 0 },
+          { picked: pick && (jewel.id === selectJewel[0].jewel.id) }
         ]"
       >
         <img
           :src="icons[jewel.value]"
-          v-show="jewel.tag !== 0"
+          v-show="jewel.tag === 1"
         />
         <img
-          :src="icons.bomb"
+          :src="crushIcon"
           v-show="jewel.tag === 0"
         />
       </div>
@@ -34,15 +29,10 @@
 </template>
 
 <script>
-// 'https://image.flaticon.com/icons/png/128/148/148905.png',
-// 'https://image.flaticon.com/icons/png/128/1144/1144441.png',
 const icons = {
-  1: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/14015619/android/sticker.png',
-  2: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/14015631/android/sticker.png',
-  3: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/14015629/android/sticker.png',
-  4: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/14015625/android/sticker.png',
-  5: 'https://stickershop.line-scdn.net/stickershop/v1/sticker/14015614/android/sticker.png',
-  bomb: 'https://img.icons8.com/office/80/000000/explosion.png',
+  1: 'https://vuejs.org/images/logo.png',
+  2: 'https://www.ssa-frontend.com/media/1164/react.png',
+  3: 'https://angular.io/assets/images/logos/angular/angular.svg',
 };
 
 export default {
@@ -66,9 +56,14 @@ export default {
       default: () => (icons),
       description: 'Jewel icon urls'
     },
+    crushIcon: {
+      type: String,
+      default: 'https://img.icons8.com/ultraviolet/40/000000/explosion.png',
+      description: 'Icon for jewel crashed'
+    },
     jewelTypes: {
       type: Number,
-      default: 4,
+      default: 3,
       description: 'Jewel type number used in puzzle. should <= stickers length'
     },
   },
@@ -90,12 +85,7 @@ export default {
     },
     // Create Jewel
     // id: X => for vue key animation
-    // tag:
-    //  0 => jewel bomb tagged,
-    //  1 => normal jewel,
-    //  2 => special col,
-    //  3 => special row
-    //  4 => special same
+    // tag: 0 => jewel tagged, 1 => normal jewel
     // value: X => for scaning
     createJewel(i) {
       const vm = this;
@@ -112,20 +102,6 @@ export default {
         tag: 1,
         value,
       };
-    },
-    findJewelById(id) {
-      let list = this.jewelList;
-      let result = {};
-      for (let i=0;i<this.ratio;i++) {
-        for (let j=0;j<this.ratio;j++) {
-          if (list[i][j].id === id) {
-            result.i = i;
-            result.j = j;
-            break;
-          }
-        }
-      }
-      return result;
     },
     initBoard() {
       const { ratio, jewelList } = this;
@@ -164,37 +140,27 @@ export default {
       this.exchange();
     },
     exchange() {
+      const list = this.jewelList;
       const [jOne, jTwo] = this.selectJewel;
       const isNear = this.checkIsNear(jOne, jTwo);
-      const isSuper = this.checkIsSuper(jOne, jTwo);
+      const changeJewel = () => {
+        const temp = list[jOne.i][jOne.j].value;
+        list[jOne.i][jOne.j].value = list[jTwo.i][jTwo.j].value;
+        list[jTwo.i][jTwo.j].value = temp;
+      };
       if (isNear) {
-        if (isSuper) {
-          this.superHandler(jOne, jTwo);
-          this.replaceTag();
+        changeJewel();
+        // scan both selected
+        const state1 = this.scan(jOne.i, jOne.j);
+        const state2 = this.scan(jTwo.i, jTwo.j);
+        if (state1 || state2) {
+          // replace tags
+          this.replaceTag(); 
         } else {
-          this.changeJewel(jOne, jTwo);
-          // scan both selected
-          const state1 = this.scan(jOne.i, jOne.j);
-          const state2 = this.scan(jTwo.i, jTwo.j);
-          if (state1 || state2) {
-            // replace tags
-            this.replaceTag();
-          } else {
-            this.changeJewel(jOne, jTwo);
-          }
+          changeJewel();
         }
       }
       this.selectJewel = [];
-    },
-    changeJewel(jOne, jTwo) {
-      const list = this.jewelList;
-      const from = list[jOne.i][jOne.j];
-      const to = list[jTwo.i][jTwo.j];
-      const { value: tempV, tag: tempT } = from;
-      from.value = to.value;
-      from.tag = to.tag;
-      to.value = tempV;
-      to.tag = tempT;
     },
     checkIsNear(jOne, jTwo) {
       // same col
@@ -206,27 +172,6 @@ export default {
         return jOne.j === jTwo.j;
       }
       return false;
-    },
-    checkIsSuper(jOne, jTwo) {
-      if (jOne.jewel.tag === 1 || jTwo.jewel.tag === 1) return false;
-      return true;
-    },
-    superHandler(jOne, jTwo) {
-      // same special
-      if (jOne.jewel.tag === jTwo.jewel.tag) {
-        if (jOne.jewel.tag === 2) {
-          this.specialColHandle(jOne.i);
-          this.specialColHandle(jTwo.i);
-        }
-        if (jOne.jewel.tag === 3) {
-          this.specialRowHandle(jOne.j);
-          this.specialRowHandle(jTwo.j);
-        }
-      // different special
-      } else {
-        this.specialColHandle(jOne.i);
-        this.specialRowHandle(jOne.j);
-      }
     },
     scan(i, j) {
       const { ratio, match, jewelList: list } = this;
@@ -255,110 +200,31 @@ export default {
         right++;
       }
       // console.log('vertical:', top, down);
-      this.removeColWithTag(i, j, top, down);
+      this.removeColWithTag(i, top, down);
       // console.log('horizontal:', left, right);
-      this.removeRowWithTag(i, j, left, right);
+      this.removeRowWithTag(j, left, right);
       return (down-top>=(match-1) || right-left>=(match-1));
     },
-    specialColHandle(i) {
-      this.jewelList[i].forEach((jewel) => {
-        if (jewel.tag === 3) {
-          const { j } = this.findJewelById(jewel.id);
-          this.specialRowHandle(j);
-        }
-        if (jewel.tag === 4) {
-          this.specialSameHandle(jewel.value);
-        }
-        jewel.tag = 0;
-      });
-    },
-    specialRowHandle(j) {
-      for (let i=0;i<this.ratio;i++) {
-        const jewel = this.jewelList[i][j];
-        if (jewel.tag === 2) {
-          const { i } = this.findJewelById(jewel.id);
-          this.specialColHandle(i);
-        }
-        if (jewel.tag === 4) {
-          this.specialSameHandle(jewel.value);
-        }
-        jewel.tag = 0;
-      }
-    },
-    specialSameHandle(value) {
-      const list = this.jewelList;
-      for (let i=0;i<this.ratio;i++) {
-        for (let j=0;j<this.ratio;j++) {
-          const jewel = list[i][j];
-          if (jewel.value === value) {
-            if (jewel.tag === 2) {
-              this.specialColHandle(i);
-            }
-            if (jewel.tag === 3) {
-              this.specialRowHandle(j);
-            }
-            jewel.tag = 0;
-          }
-        }
-      }
-    },
-    removeColWithTag(i, j, top, down) {
+    removeColWithTag(i, top, down) {
       if (down-top < (this.match-1)) return;
       const list = this.jewelList;
+      const needOffset = down+1 === this.ratio;
       const from = top;
-      const to = down+1;
+      const to = (needOffset ? down+2 : down+1);
       const slices = list[i].slice(from, to);
-      slices.forEach((jewel) => {
-        // normal handle
-        if (jewel.tag === 1) {
-          jewel.tag = 0;
-        } else {
-          // special handle
-          if (jewel.tag === 2) {
-            this.specialColHandle(i);
-          } else if (jewel.tag === 3) {
-            const { j } = this.findJewelById(jewel.id);
-            this.specialRowHandle(j);
-          } else if (jewel.tag === 4) {
-            this.specialSameHandle(jewel.value);
-          }
-        }
-      });
+      slices.forEach((jewel) => jewel.tag = 0);
+      // tag col => 0
       list[i].splice(from, to-from, ...slices);
-      // tag col special
-      if (to-from > this.match) {
-        list[i][j].tag = to-from === 4 ? 2 : 4;
-      }
       this.$forceUpdate();
     },
-    removeRowWithTag(i, j, left, right) {
+    removeRowWithTag(j, left, right) {
       if (right-left < (this.match-1)) return;
       const list = this.jewelList;
       let from = left, to = right;
       // tag col => 0
       while (from <= to) {
-        const jewel = list[from][j];
-        // normal
-        if (jewel.tag === 1) {
-          jewel.tag = 0;
-        } else {
-          // special handle
-          if (jewel.tag === 2) {
-            const { i } = this.findJewelById(jewel.id);
-            this.specialColHandle(i);
-          }
-          if (jewel.tag === 3) {
-            this.specialRowHandle(j);
-          }
-          if (jewel.tag === 4) {
-            this.specialSameHandle(jewel.value);
-          }
-        }
+        list[from][j].tag = 0;
         from++;
-      }
-      // tag row special
-      if (right-left+1 > this.match) {
-        list[i][j].tag = to-from === 4 ? 3 : 4;
       }
       this.$forceUpdate();
     },
@@ -412,18 +278,12 @@ export default {
   }
 }
 
-@keyframes shiny {
-  50% {
-    filter: brightness(1.2);
-  }
-}
-
-.jewel-board {
+.crush-puzzle {
   width: 300px;
   height: 300px;
   display: flex;
   margin: auto;
-  background: #fff6e2;
+  background: #e2fff3;
   .jewel-col {
     display: flex;
     flex-wrap: wrap;
@@ -440,32 +300,9 @@ export default {
       box-sizing: border-box;
       cursor: pointer;
       animation: fadeIn 0.3s linear 1;
-      &.bomb {
+      &.tag {
         color: #fff;
         background: #000;
-      }
-      &.col {
-        background-image: repeating-linear-gradient(
-          90deg,
-          transparent 3px,
-          rgb(255, 203, 203) 3px,
-          rgb(255, 203, 203) 9px,
-          transparent 9px,
-          transparent 15px,
-        );
-      }
-      &.row {
-        background-image: repeating-linear-gradient(
-          transparent 3px,
-          rgb(255, 203, 203) 3px,
-          rgb(255, 203, 203) 9px,
-          transparent 9px,
-          transparent 15px,
-        );
-      }
-      &.same {
-        background: rgb(255, 255, 64);
-        animation: shiny 1s linear infinite;
       }
       &.picked {
         color: red;

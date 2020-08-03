@@ -1,6 +1,7 @@
 <template>
   <div id="app">
-    <crush-puzzle />
+    <p>Your points: {{ points }}</p>
+    <crush-puzzle @count="onCount" />
     <h1>Vue Crush Puzzle</h1>
     <p>
       A simple component for creating a crush puzzle game
@@ -27,8 +28,18 @@ import CrushPuzzle from './components/CrushPuzzle.vue'
 export default {
   name: 'App',
   components: {
-    CrushPuzzle
-  }
+    CrushPuzzle,
+  },
+  data() {
+    return {
+      points: 0,
+    };
+  },
+  methods: {
+    onCount(points) {
+      this.points = points;
+    },
+  },
 };
 </script>
 
