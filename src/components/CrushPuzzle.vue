@@ -358,7 +358,7 @@ export default {
       }
       // tag row special
       if (right-left+1 > this.match) {
-        list[i][j].tag = to-from === 4 ? 3 : 4;
+        list[i][j].tag = right-left+1 === 4 ? 3 : 4;
       }
       this.$forceUpdate();
     },
@@ -419,8 +419,8 @@ export default {
 }
 
 .jewel-board {
-  width: 300px;
-  height: 300px;
+  width: 360px;
+  height: 360px;
   display: flex;
   margin: auto;
   background: #fff6e2;

@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <p>Your points: {{ points }}</p>
-    <crush-puzzle @count="onCount" />
+    <crush-puzzle :ratio="7" @count="onCount" />
     <h1>Vue Crush Puzzle</h1>
     <p>
       A simple component for creating a crush puzzle game
